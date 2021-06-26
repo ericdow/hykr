@@ -1,4 +1,4 @@
-# TopFun
+# hykr
 
 Web-based path planning in python
 
@@ -9,21 +9,24 @@ Web-based path planning in python
 
 https://realpython.com/flask-by-example-part-1-project-setup/#creating-the-python-flask-example-application
 
-# create virtual environment to play in, only do this first time
+// create virtual environment to play in, only do this first time
 python3 -m venv venv
 
-# activate the virtual environment
+// activate the virtual environment
 source venv/bin/activate
 
-# install flask
+// install flask
 python3 -m pip install Flask==1.1.2
 
-# dump python packages
+// dump python packages
 python3 -m pip freeze > requirements.txt
 
-# run it and view
+// run it and view
 flask run
 xdg-open http://localhost:5000
 
-# deactivate the virtual environment
+// deactivate the virtual environment
 deactivate
+
+// to reinstall the requirements in the virtual environment
+python3 -m pip install -r requirements.txt
