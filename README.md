@@ -1,4 +1,5 @@
 # hykr
+:sunrise_over_mountains: :snake:
 
 Web-based path planning in python
 
@@ -15,8 +16,9 @@ python3 -m venv venv
 // activate the virtual environment
 source venv/bin/activate
 
-// install flask
+// install packages
 python3 -m pip install Flask==1.1.2
+python3 -m pip install flask-sijax
 
 // dump python packages
 python3 -m pip freeze > requirements.txt
