@@ -1,0 +1,29 @@
+<html>
+  <header>
+     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  </header>
+ <body>
+    <div class='wrapper'>
+      A = <input type="number" id="input_A">
+      B = <input type="number" id="input_B">
+      <button class='get_result'>Calculate</button>
+      <div class='result'></div>
+    </div>
+ </body>
+ <script>
+    $(document).ready(function(){
+      $('.wrapper').on('click', '.get_result', function(){
+         var val1 = $("#input_A").val();
+         var val2 = $("#input_B").val();
+         $.ajax({
+          url: "/calculate_result",
+          type: "get",
+          data: {val1: val1, val2:val2},
+          success: function(response) {
+            $(".result").html('<p>'+response.result.toString()+'</p>');
+          },
+         });
+      });
+    });
+ </script>
+</html>

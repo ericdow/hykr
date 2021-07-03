@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, g
+from flask import Flask, request, render_template, g, jsonify
 import os, sys, flask_sijax
 from elevation_data import *
 
@@ -29,7 +29,7 @@ def pie():
     colors = ['#ff0000','#0000ff','#ffffe0','#008000','#800080','#FFA500']
     return render_template('pie.html', values=values, labels=labels, colors=colors)
 
-# example of ijax enabled function - notice the `@Sijax.route` decorator
+# example of sijax enabled function - notice the `@Sijax.route` decorator
 # TODO remove
 @flask_sijax.route(app, "/sijax")
 def hello_sijax():
@@ -54,25 +54,21 @@ def hello_sijax():
 
     return render_template('sijax.html')
 
-'''
+# example of using ajax to call a python function
+# TODO remove
+@app.route('/ajax_example')
+def ajax_example():
+    return render_template('ajax_example.html')
+
+@app.route('/calculate_result')
+def calculate_result():
+    a = float(request.args.get('val1'))
+    b = float(request.args.get('val2'))
+    return jsonify({"result":a+b})
+
 @app.route("/")
 def index():
-    celsius = request.args.get("celsius", "")
-    return (
-        """<form action="" method="get">
-                <input type="text" name="celsius">
-                <input type="submit" value="Convert">
-            </form>"""
-        + celsius
-    )
-
-@app.route("/<int:celsius>")
-def fahrenheit_from(celsius):
-    """Convert Celsius to Fahrenheit degrees."""
-    fahrenheit = float(celsius) * 9 / 5 + 32
-    fahrenheit = round(fahrenheit, 3)  # Round to three decimal places
-    return str(fahrenheit)
-'''
+    return render_template('index.html')
 
 if __name__ == "__main__":
     # TODO: remove debug
