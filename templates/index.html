@@ -2,43 +2,67 @@
   <header>
      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
   </header>
-<head>
-<link rel="stylesheet" href="{{ url_for('static',filename='styles/index.css') }}">
-</head>
- <body>
+
+  <head>
+    <link rel="stylesheet" href="{{ url_for('static',filename='styles/index.css') }}">
+  </head>
+  
+  <body>
+    <span style='font-size:100px;'>hykr&#127748;</span>
+    <!-- All inputs -->
     <div class='wrapper'>
-      A = <input type="number" id="input_A">
-      B = <input type="number" id="input_B">
-      <button class='get_result'>Calculate</button>
+      <p>
+      <label for="a">Starting latitude/longitude:</label>
+      <input type="number" min="-90" max="90" value="44.2232" step="0.0001" id="lat_start">
+      <input type="number" min="-180" max="180" value="-68.3372" step="0.0001" id="long_start">
+	  	</p>
+	  	
+      <p>
+	  	<label for="b">Ending latitude/longitude:</label>
+      <input type="number" min="-90" max="90" value="44.3879" step="0.0001" id="lat_end">
+      <input type="number" min="-180" max="180" value="-68.2044" step="0.0001" id="long_end">
+	  	</p>
+	  	
+      <label for="elev_select">Elevation data source:</label>
+	  	<select id="elev_select">
+	  	    <option value="open_topo_data">OpenTopoData</option>
+	  	    <option value="epqs">USGS EPQS</option>
+	  	</select>
+      
+      <button class='run'>Run</button>
+      
+      <!-- TODO Displays results -->
       <div class='result'></div>
+   
+      <!-- Terrain visualizer --> 
+      <div>
+        <script src="{{ url_for('static',filename='js/three.min.js') }}"></script>
+        <script src="{{ url_for('static',filename='js/renderer.js') }}"></script>
+      </div>
+    
     </div>
+  </body>
+  
+  <!-- Driver for 'Run' button click event -->
+  <script>
+     $(document).ready(function(){
+       $('.wrapper').on('click', '.run', function(){
+          var lat_start   = $("#lat_start").val();
+          var long_start  = $("#long_start").val();
+          var lat_end     = $("#lat_end").val();
+          var long_end    = $("#long_end").val();
+          var elev_source = $("#elev_select").val();
+          $.ajax({
+           url: "/calculate_result",
+           type: "get",
+           data: {lat_start:lat_start, long_start:long_start, lat_end:lat_end, 
+             long_end:long_end, elev_source:elev_source},
+           success: function(response) {
+             $(".result").html('<p>'+response.result.toString()+'</p>');
+           },
+          });
+       });
+     });
+  </script>
 
-		<form>
-		  <p>
-		    <label for="a">Short label:</label>
-		    <input id="a" type="text">
-		  </p>
-		  <p>
-		    <label for="b">Very very very long label:</label>
-		    <input id="b" type="text">
-		  </p>
-		</form>
-
- </body>
- <script>
-    $(document).ready(function(){
-      $('.wrapper').on('click', '.get_result', function(){
-         var val1 = $("#input_A").val();
-         var val2 = $("#input_B").val();
-         $.ajax({
-          url: "/calculate_result",
-          type: "get",
-          data: {val1: val1, val2:val2},
-          success: function(response) {
-            $(".result").html('<p>'+response.result.toString()+'</p>');
-          },
-         });
-      });
-    });
- </script>
 </html>

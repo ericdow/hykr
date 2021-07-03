@@ -9,7 +9,8 @@ app = Flask(__name__)
 
 # The path where you want the extension to create the needed javascript files
 # DON'T put any of your files in this directory, because they'll be deleted!
-app.config["SIJAX_STATIC_PATH"] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
+app.config["SIJAX_STATIC_PATH"] = os.path.join('.', 
+        os.path.dirname(__file__), 'static/js/sijax/')
 
 # You need to point Sijax to the json2.js library if you want to support
 # browsers that don't support JSON natively (like IE <= 7)
@@ -21,9 +22,6 @@ flask_sijax.Sijax(app)
 # TODO remove
 @app.route("/pie")
 def pie():
-    # otd = OpenTopoData()
-    # elev = otd.get_elevations([(-43.5,172.5), (27.6,1.98)])
-    # return str(elev)
     values = [12, 19, 3, 5, 2, 3]
     labels = ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange']
     colors = ['#ff0000','#0000ff','#ffffe0','#008000','#800080','#FFA500']
@@ -62,9 +60,21 @@ def ajax_example():
 
 @app.route('/calculate_result')
 def calculate_result():
-    a = float(request.args.get('val1'))
-    b = float(request.args.get('val2'))
-    return jsonify({"result":a+b})
+    # grab the input parameters
+    lat_start = float(request.args.get('lat_start'))
+    long_start = float(request.args.get('long_start'))
+    lat_end = float(request.args.get('lat_end'))
+    long_end = float(request.args.get('long_end'))
+    elev_source = request.args.get('elev_source')
+
+    # compute the elevation data
+    if elev_source == 'open_topo_data':
+        elev_server = OpenTopoData()
+    elif elev_source == 'epqs':
+        elev_server = EPQSData()
+    elev = elev_server.get_elevations([(lat_start, long_start)])
+    
+    return jsonify({"result":elev})
 
 @app.route("/")
 def index():

@@ -1,5 +1,6 @@
 import urllib.request
 import json
+import time
 
 class ElevationData:
     '''Base class for elevation data objects, which are responsible for 
@@ -26,22 +27,31 @@ class OpenTopoData(ElevationData):
         return contents['status'] == 'OK'
     
     def get_elevations(self, lat_lng_list):
+        # public API: 1000 calls/day, 100 locations/call, 1 call/sec
         # build the request by joining the locations
+        elevations = []
         dataset = 'aster30m'
         url = self.base_url + '/v1/' + dataset + '?locations='
         for i,lat_lng in enumerate(lat_lng_list):
             url += str(lat_lng[0]) + ',' + str(lat_lng[1])
-            if i < len(lat_lng_list)-1:
-                url += '|'
+            url += '|'
+           
+            # make request if we've reached 100 locations
+            if ((i+1) % 100 == 0) or (i == len(lat_lng_list)-1):
+                url = url[:-1]
+                # request the data
+                contents = urllib.request.urlopen(url).read()
+                contents = json.loads(contents)
 
-        # request the data
-        contents = urllib.request.urlopen(url).read()
-        contents = json.loads(contents)
+                # extract a list of elevations
+                for result in contents['results']:
+                    elevations.append(result['elevation'])
+        
+                url = self.base_url + '/v1/' + dataset + '?locations='
 
-        # extract a list of elevations
-        elevations = []
-        for result in contents['results']:
-            elevations.append(result['elevation'])
+                # sleep to make sure we don't exceed data cap
+                if not i == len(lat_lng_list)-1:
+                    time.sleep(1.1)
 
         return elevations
 
