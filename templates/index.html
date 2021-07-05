@@ -35,10 +35,9 @@
       <div class='result'></div>
    
       <!-- Terrain visualizer --> 
-      <div>
-        <script src="{{ url_for('static',filename='js/three.min.js') }}"></script>
-        <script src="{{ url_for('static',filename='js/renderer.js') }}"></script>
-      </div>
+      <div id="terrain_container"></div>
+      <script type="module" src="{{ url_for('static',filename='js/OrbitControls.js') }}"></script>
+      <script type="module" src="{{ url_for('static',filename='js/renderer.js') }}"></script>
     
     </div>
   </body>
