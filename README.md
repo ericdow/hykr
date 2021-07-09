@@ -17,7 +17,6 @@ source venv/bin/activate
 
 // install packages
 python3 -m pip install Flask==1.1.2
-python3 -m pip install flask-sijax
 
 // dump python packages
 python3 -m pip freeze > requirements.txt

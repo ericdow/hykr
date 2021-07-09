@@ -49,10 +49,6 @@ class OpenTopoData(ElevationData):
         
                 url = self.base_url + '/v1/' + dataset + '?locations='
 
-                # sleep to make sure we don't exceed data cap
-                if not i == len(lat_lng_list)-1:
-                    time.sleep(1.1)
-
         return elevations
 
 class EPQSData(ElevationData):

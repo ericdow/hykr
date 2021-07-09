@@ -1,62 +1,8 @@
-from flask import Flask, request, render_template, g, jsonify
-import os, sys, flask_sijax
+from flask import Flask, request, render_template, jsonify
+import os, sys, math
 from elevation_data import *
 
-path = os.path.join('.', os.path.dirname(__file__), '../')
-sys.path.append(path)
-
 app = Flask(__name__)
-
-# The path where you want the extension to create the needed javascript files
-# DON'T put any of your files in this directory, because they'll be deleted!
-app.config["SIJAX_STATIC_PATH"] = os.path.join('.', 
-        os.path.dirname(__file__), 'static/js/sijax/')
-
-# You need to point Sijax to the json2.js library if you want to support
-# browsers that don't support JSON natively (like IE <= 7)
-app.config["SIJAX_JSON_URI"] = '/static/js/sijax/json2.js'
-
-flask_sijax.Sijax(app)
-
-# example of passing array to a template
-# TODO remove
-@app.route("/pie")
-def pie():
-    values = [12, 19, 3, 5, 2, 3]
-    labels = ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange']
-    colors = ['#ff0000','#0000ff','#ffffe0','#008000','#800080','#FFA500']
-    return render_template('pie.html', values=values, labels=labels, colors=colors)
-
-# example of sijax enabled function - notice the `@Sijax.route` decorator
-# TODO remove
-@flask_sijax.route(app, "/sijax")
-def hello_sijax():
-    # Sijax handler function receiving 2 arguments from the browser
-    # The first argument (obj_response) is passed automatically
-    # by Sijax (much like Python passes `self` to object methods)
-    def hello_handler(obj_response, hello_from, hello_to):
-        obj_response.alert('Hello from %s to %s' % (hello_from, hello_to))
-        obj_response.css('a', 'color', 'green')
-
-    # Another Sijax handler function which receives no arguments
-    def goodbye_handler(obj_response):
-        obj_response.alert('Goodbye, whoever you are.')
-        obj_response.css('a', 'color', 'red')
-
-    if g.sijax.is_sijax_request:
-        # The request looks like a valid Sijax request
-        # Let's register the handlers and tell Sijax to process it
-        g.sijax.register_callback('say_hello', hello_handler)
-        g.sijax.register_callback('say_goodbye', goodbye_handler)
-        return g.sijax.process_request()
-
-    return render_template('sijax.html')
-
-# example of using ajax to call a python function
-# TODO remove
-@app.route('/ajax_example')
-def ajax_example():
-    return render_template('ajax_example.html')
 
 @app.route('/calculate_result')
 def calculate_result():
@@ -66,15 +12,47 @@ def calculate_result():
     lat_end = float(request.args.get('lat_end'))
     long_end = float(request.args.get('long_end'))
     elev_source = request.args.get('elev_source')
+    algo = request.args.get('algo')
+
+    # form a bounding box of points to evaluate the elevations at
+    nx = 30
+    ny = 30
+    lat_mid = 0.5*(lat_start + lat_end)
+    lat_dist = math.fabs(lat_end - lat_start)*111045.0
+    long_mid = 0.5*(long_start + long_end)
+    Re = 6.371e6 # Earth radius in meters
+    r_at_lat = math.cos(math.radians(math.fabs(lat_mid)))*Re # radius at lat_mid
+    long_dist = r_at_lat*math.radians(math.fabs(long_end-long_start))
+    
+    d = math.sqrt(lat_dist**2 + long_dist**2)
+    mult = 1.2 # multiplier for expanding bounding box
+    
+    lat_min = lat_mid - 0.5*mult*d/Re*180.0/math.pi
+    lat_max = lat_mid + 0.5*mult*d/Re*180.0/math.pi
+    dlat = (lat_max - lat_min) / ny
+    lat_dist = math.fabs(lat_max - lat_min)*111045.0
+    
+    long_min = long_mid - 0.5*mult*d/r_at_lat*180.0/math.pi
+    long_max = long_mid + 0.5*mult*d/r_at_lat*180.0/math.pi
+    dlong = (long_max - long_min) / nx
+    long_dist = r_at_lat*math.radians(math.fabs(long_max-long_min))
+    
+    lat_long_to_eval = []
+    for i in range(nx):
+        long = long_min + i*dlong
+        for j in range(ny):
+            lat = lat_min + j*dlat
+            lat_long_to_eval.append((lat,long))
 
     # compute the elevation data
     if elev_source == 'open_topo_data':
         elev_server = OpenTopoData()
     elif elev_source == 'epqs':
         elev_server = EPQSData()
-    elev = elev_server.get_elevations([(lat_start, long_start)])
-    
-    return jsonify({"result":elev})
+    elev = elev_server.get_elevations(lat_long_to_eval)
+
+    return jsonify({"elev":elev, "nx":nx, "ny":ny, "lat_dist":lat_dist, 
+        "long_dist":long_dist})
 
 @app.route("/")
 def index():

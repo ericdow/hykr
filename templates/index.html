@@ -23,43 +23,67 @@
       <input type="number" min="-180" max="180" value="-68.2044" step="0.0001" id="long_end">
 	  	</p>
 	  	
+      <p>
       <label for="elev_select">Elevation data source:</label>
 	  	<select id="elev_select">
 	  	    <option value="open_topo_data">OpenTopoData</option>
 	  	    <option value="epqs">USGS EPQS</option>
 	  	</select>
+	  	</p>
       
+      <p>
+      <label for="algo_select">Pathfinding algorithm:</label>
+	  	<select id="algo_select">
+	  	    <option value="dijkstra">Dijkstra</option>
+	  	    <option value="a_star">A*</option>
+	  	</select>
+	  	</p>
+      
+      <p>
       <button class='run'>Run</button>
-      
-      <!-- TODO Displays results -->
-      <div class='result'></div>
+	  	</p>
    
       <!-- Terrain visualizer --> 
-      <div id="terrain_container"></div>
-      <script type="module" src="{{ url_for('static',filename='js/OrbitControls.js') }}"></script>
-      <script type="module" src="{{ url_for('static',filename='js/renderer.js') }}"></script>
-    
+      <div class='terrain_class' id="terrain_container">
+        <script type="module" src="{{ url_for('static',filename='js/OrbitControls.js') }}"></script>
+        <script type="module" src="{{ url_for('static',filename='js/renderer.js') }}"></script>
+      </div>
+        
+      <!-- Expose renderer update methods --> 
+      <script type="module">
+        import {update} from "./{{ url_for('static',filename='js/renderer.js') }}";
+        function update_scene(response) {
+          update(response);
+        }
+        // expose this function to global scope
+        window.update_scene = update_scene;
+      </script>
+
     </div>
   </body>
   
   <!-- Driver for 'Run' button click event -->
   <script>
      $(document).ready(function(){
-       $('.wrapper').on('click', '.run', function(){
-          var lat_start   = $("#lat_start").val();
-          var long_start  = $("#long_start").val();
-          var lat_end     = $("#lat_end").val();
-          var long_end    = $("#long_end").val();
-          var elev_source = $("#elev_select").val();
-          $.ajax({
+       $('.wrapper').on('click', '.run', function() {
+         // grab the input data
+         var lat_start   = $("#lat_start").val();
+         var long_start  = $("#long_start").val();
+         var lat_end     = $("#lat_end").val();
+         var long_end    = $("#long_end").val();
+         var elev_source = $("#elev_select").val();
+         var algo        = $("#algo_select").val();
+         // use ajax to call python pathfinding code and display result
+         $.ajax({
            url: "/calculate_result",
            type: "get",
            data: {lat_start:lat_start, long_start:long_start, lat_end:lat_end, 
-             long_end:long_end, elev_source:elev_source},
+             long_end:long_end, elev_source:elev_source, algo:algo},
+           dataType: "json",
            success: function(response) {
-             $(".result").html('<p>'+response.result.toString()+'</p>');
+             update_scene(response);
            },
-          });
+         });
        });
      });
   </script>
