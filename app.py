@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, jsonify
 import os, sys
 from elevation_data import *
+from map_data import *
 
 app = Flask(__name__)
 
@@ -14,7 +15,7 @@ def calculate_result():
     elev_source = request.args.get('elev_source')
     algo = request.args.get('algo')
 
-    # compute the elevation data
+    # get the elevation data
     nx = 100
     ny = 100
     d_mult = 1.2
@@ -23,11 +24,16 @@ def calculate_result():
     elif elev_source == 'epqs':
         elev_server = EPQSData()
     elif elev_source == 'bing_maps':
-        elev_server = BingMapData()
+        elev_server = BingElevData()
     elev = elev_server.get_elevations(lat_start, long_start, lat_end, long_end, 
             nx, ny, d_mult)
-    lat_dist, long_dist = elev_server.get_lat_long_dist(lat_start, long_start, 
-            lat_end, long_end, nx, ny, d_mult)[:2]
+    lat_dist, long_dist, lat_min, long_min, lat_max, long_max = \
+            elev_server.get_lat_long_dist(lat_start, long_start, lat_end, 
+                    long_end, d_mult)
+
+    # get the image data
+    map_server = BingMapData()
+    map_server.get_image(lat_min, long_min, lat_max, long_max, 350)
 
     return jsonify({"elev":elev, "nx":nx, "ny":ny, "lat_dist":lat_dist, 
         "long_dist":long_dist})

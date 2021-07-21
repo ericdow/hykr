@@ -15,8 +15,8 @@ class ElevationData:
         '''Get the elevation at a given latitudes and longitudes'''
         raise NotImplementedError('You need to define get_elevation()!')
 
-    def get_lat_long_dist(self, lat_start, long_start, lat_end, long_end, nx, 
-            ny, d_mult):
+    def get_lat_long_dist(self, lat_start, long_start, lat_end, long_end, 
+            d_mult):
         # form a bounding box of points to evaluate the elevations at
         lat_mid = 0.5*(lat_start + lat_end)
         lat_dist = math.fabs(lat_end - lat_start)*111045.0
@@ -28,12 +28,10 @@ class ElevationData:
         d = math.sqrt(lat_dist**2 + long_dist**2)
         lat_min = lat_mid - 0.5*d_mult*d/Re*180.0/math.pi
         lat_max = lat_mid + 0.5*d_mult*d/Re*180.0/math.pi
-        dlat = (lat_max - lat_min) / ny
         lat_dist = math.fabs(lat_max - lat_min)*111045.0
         
         long_min = long_mid - 0.5*d_mult*d/r_at_lat*180.0/math.pi
         long_max = long_mid + 0.5*d_mult*d/r_at_lat*180.0/math.pi
-        dlong = (long_max - long_min) / nx
         long_dist = r_at_lat*math.radians(math.fabs(long_max-long_min))
 
         return (lat_dist, long_dist, lat_min, long_min, lat_max, long_max)
@@ -41,7 +39,7 @@ class ElevationData:
     def get_lat_long_grid(self, lat_start, long_start, lat_end, long_end, nx, 
             ny, d_mult):
         lat_min, long_min, lat_max, long_max = self.get_lat_long_dist(lat_start, 
-                long_start, lat_end, long_end, nx, ny, d_mult)[2:]
+                long_start, lat_end, long_end, d_mult)[2:]
         
         dlat = (lat_max - lat_min) / ny
         dlong = (long_max - long_min) / nx
@@ -119,7 +117,7 @@ class EPQSData(ElevationData):
 
         return elevations
 
-class BingMapData(ElevationData):
+class BingElevData(ElevationData):
     '''Elevation data from Bing Maps'''
     def __init__(self):
         self.base_url = 'http://dev.virtualearth.net/REST/v1/Elevation/'
@@ -147,7 +145,7 @@ class BingMapData(ElevationData):
 
 if __name__ == "__main__":
     # TODO
-    bmd = BingMapData()
+    bmd = BingElevData()
     print(bmd.get_elevations(50, 50, 60, 60, 32, 32, 1.2))
 
     '''
