@@ -20,7 +20,7 @@ elev0.fill(100.0);
 init(nx0, ny0, 1000, 1000, elev0);
 animate();
 
-function init(nx, ny, long_dist, lat_dist, elev) {
+function init(nx, ny, long_dist, lat_dist, elev, image_url) {
 	container = document.getElementById('terrain_container');
 	container.innerHTML = '';
 
@@ -57,8 +57,9 @@ function init(nx, ny, long_dist, lat_dist, elev) {
 
 	geometry.computeFaceNormals(); // needed for helper
 
-  // TODO: this is where to set the texture data
-	texture = new THREE.CanvasTexture(generateTexture(elev, nx, ny));
+  // TODO: scale and translate texture to line up with bbox
+  // TODO: only set texture if URL is present
+  texture = new THREE.TextureLoader().load(image_url)
 	texture.wrapS = THREE.ClampToEdgeWrapping;
 	texture.wrapT = THREE.ClampToEdgeWrapping;
 
@@ -105,71 +106,6 @@ function generateHeight(width, height) {
 	return data;
 }
 
-function generateTexture(data, width, height) {
-	// bake lighting into texture
-	let context, image, imageData, shade;
-
-	const vector3 = new THREE.Vector3(0, 0, 0);
-
-	const sun = new THREE.Vector3(1, 1, 1);
-	sun.normalize();
-
-	const canvas = document.createElement('canvas');
-	canvas.width = width;
-	canvas.height = height;
-
-	context = canvas.getContext('2d');
-	context.fillStyle = '#000';
-	context.fillRect(0, 0, width, height);
-
-	image = context.getImageData(0, 0, canvas.width, canvas.height);
-	imageData = image.data;
-
-	for (let i = 0, j = 0, l = imageData.length; i < l; i += 4, j ++) {
-
-		vector3.x = data[ j - 2 ] - data[ j + 2 ];
-		vector3.y = 2;
-		vector3.z = data[ j - width * 2 ] - data[ j + width * 2 ];
-		vector3.normalize();
-
-		shade = vector3.dot(sun);
-
-		imageData[ i ] = (96 + shade * 128) * (0.5 + data[ j ] * 0.007);
-		imageData[ i + 1 ] = (32 + shade * 96) * (0.5 + data[ j ] * 0.007);
-		imageData[ i + 2 ] = (shade * 96) * (0.5 + data[ j ] * 0.007);
-
-	}
-
-	context.putImageData(image, 0, 0);
-
-	// Scaled 4x
-
-	const canvasScaled = document.createElement('canvas');
-	canvasScaled.width = width * 4;
-	canvasScaled.height = height * 4;
-
-	context = canvasScaled.getContext('2d');
-	context.scale(4, 4);
-	context.drawImage(canvas, 0, 0);
-
-	image = context.getImageData(0, 0, canvasScaled.width, canvasScaled.height);
-	imageData = image.data;
-
-	for (let i = 0, l = imageData.length; i < l; i += 4) {
-
-		const v = ~ ~ (Math.random() * 5);
-
-		imageData[ i ] += v;
-		imageData[ i + 1 ] += v;
-		imageData[ i + 2 ] += v;
-
-	}
-
-	context.putImageData(image, 0, 0);
-
-	return canvasScaled;
-}
-
 function animate() {
   requestAnimationFrame(animate);
 	render();
@@ -199,6 +135,6 @@ function onPointerMove(event) {
 // function to update terrain and texture data
 export function update(response) {
   init(response.nx, response.ny, response.long_dist, response.lat_dist, 
-      response.elev);
+      response.elev, response.image_url);
 }
 

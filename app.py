@@ -33,10 +33,11 @@ def calculate_result():
 
     # get the image data
     map_server = BingMapData()
-    map_server.get_image(lat_min, long_min, lat_max, long_max, 350)
+    image_url, bbox, yres, xres = map_server.get_image_url(lat_min, long_min, 
+            lat_max, long_max)
 
-    return jsonify({"elev":elev, "nx":nx, "ny":ny, "lat_dist":lat_dist, 
-        "long_dist":long_dist})
+    return jsonify({"elev":elev, "image_url":image_url, "nx":nx, "ny":ny, 
+        "lat_dist":lat_dist, "long_dist":long_dist})
 
 @app.route("/")
 def index():

@@ -122,7 +122,7 @@ class BingElevData(ElevationData):
     def __init__(self):
         self.base_url = 'http://dev.virtualearth.net/REST/v1/Elevation/'
         with open('bing_maps_api_key', 'r') as file:
-            self.api_key = file.read()
+            self.api_key = file.read().strip()
 
     def get_elevations(self, lat_start, long_start, lat_end, long_end, nx, ny, 
             d_mult):
