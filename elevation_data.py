@@ -1,4 +1,4 @@
-import urllib.request, json, time, math
+import urllib.request, requests, json, time, math
 
 class ElevationData:
     '''Base class for elevation data objects, which are responsible for 
@@ -15,8 +15,8 @@ class ElevationData:
         '''Get the elevation at a given latitudes and longitudes'''
         raise NotImplementedError('You need to define get_elevation()!')
 
-    def get_lat_long_grid(lat_start, long_start, lat_end, long_end, nx, ny, 
-            d_mult):
+    def get_lat_long_dist(self, lat_start, long_start, lat_end, long_end, nx, 
+            ny, d_mult):
         # form a bounding box of points to evaluate the elevations at
         lat_mid = 0.5*(lat_start + lat_end)
         lat_dist = math.fabs(lat_end - lat_start)*111045.0
@@ -35,6 +35,16 @@ class ElevationData:
         long_max = long_mid + 0.5*d_mult*d/r_at_lat*180.0/math.pi
         dlong = (long_max - long_min) / nx
         long_dist = r_at_lat*math.radians(math.fabs(long_max-long_min))
+
+        return (lat_dist, long_dist, lat_min, long_min, lat_max, long_max)
+
+    def get_lat_long_grid(self, lat_start, long_start, lat_end, long_end, nx, 
+            ny, d_mult):
+        lat_min, long_min, lat_max, long_max = self.get_lat_long_dist(lat_start, 
+                long_start, lat_end, long_end, nx, ny, d_mult)[2:]
+        
+        dlat = (lat_max - lat_min) / ny
+        dlong = (long_max - long_min) / nx
         
         lat_long_list = []
         for i in range(nx):
@@ -118,15 +128,21 @@ class BingMapData(ElevationData):
 
     def get_elevations(self, lat_start, long_start, lat_end, long_end, nx, ny, 
             d_mult):
-        # build the request url
-        url = self.base_url + 'Bounds?bounds=' + str(lat_start) + ',' + \
-                str(long_start) + ',' + str(lat_end) + ',' + str(long_end)
-        url += '&rows=' + str(nx) + '&cols=' + str(ny) + '&key=' + self.api_key
+        # build a list of points to query
+        lat_long_list = self.get_lat_long_grid(lat_start, long_start, lat_end,
+                long_end, nx, ny, d_mult)
+        body = 'points='
+        for lat_long in lat_long_list:
+            body += str(lat_long[0]) + ',' + str(lat_long[1]) + ','
+        body = body[:-1]
 
-        # request the data
-        contents = urllib.request.urlopen(url).read()
-        contents = json.loads(contents)
-
+        # use POST to get large numbers of elevations
+        url = self.base_url + 'List?key=' + self.api_key
+        headers = {'Content-Length': str(len(body)), 
+                'Content-Type': 'text/plain; charset=utf-8'}
+        r = requests.post(url, data=body, headers=headers)
+        contents = json.loads(r.content)
+        
         return contents['resourceSets'][0]['resources'][0]['elevations']
 
 if __name__ == "__main__":

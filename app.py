@@ -15,8 +15,8 @@ def calculate_result():
     algo = request.args.get('algo')
 
     # compute the elevation data
-    nx = 32
-    ny = 32
+    nx = 100
+    ny = 100
     d_mult = 1.2
     if elev_source == 'open_topo_data':
         elev_server = OpenTopoData()
@@ -26,6 +26,8 @@ def calculate_result():
         elev_server = BingMapData()
     elev = elev_server.get_elevations(lat_start, long_start, lat_end, long_end, 
             nx, ny, d_mult)
+    lat_dist, long_dist = elev_server.get_lat_long_dist(lat_start, long_start, 
+            lat_end, long_end, nx, ny, d_mult)[:2]
 
     return jsonify({"elev":elev, "nx":nx, "ny":ny, "lat_dist":lat_dist, 
         "long_dist":long_dist})
