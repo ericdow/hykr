@@ -1,5 +1,7 @@
 import urllib.request, requests, json, time, math
 
+# TODO: handle latitude limits, e.g. -85 to +85 degrees
+
 class ElevationData:
     '''Base class for elevation data objects, which are responsible for 
     retreiving elevation data'''
@@ -15,23 +17,41 @@ class ElevationData:
         '''Get the elevation at a given latitudes and longitudes'''
         raise NotImplementedError('You need to define get_elevation()!')
 
+    @staticmethod
+    def clip_long(long):
+        '''Utility function to clip longitudes to range -180 to +180'''
+        if long > 180.0:
+            return long - 360.0
+        elif long < -180.0:
+            return long + 360.0
+        else:
+            return long
+
     def get_lat_long_dist(self, lat_start, long_start, lat_end, long_end, 
             d_mult):
         # form a bounding box of points to evaluate the elevations at
         lat_mid = 0.5*(lat_start + lat_end)
         lat_dist = math.fabs(lat_end - lat_start)*111045.0
-        long_mid = 0.5*(long_start + long_end)
         Re = 6.371e6 # Earth radius in meters
         r_at_lat = math.cos(math.radians(math.fabs(lat_mid)))*Re # radius at lat_mid
-        long_dist = r_at_lat*math.radians(math.fabs(long_end-long_start))
+
+        # always use smallest longitude range
+        dlong = math.fabs(long_end - long_start)
+        long0 = min(long_start, long_end)
+        long1 = max(long_start, long_end)
+        if dlong > 180.0:
+            dlong = 360.0 - dlong
+            long0, long1 = long1, long0            
+        long_dist = r_at_lat*math.radians(dlong)
+        long_mid = self.clip_long(long0 + 0.5*dlong) 
         
         d = math.sqrt(lat_dist**2 + long_dist**2)
         lat_min = lat_mid - 0.5*d_mult*d/Re*180.0/math.pi
         lat_max = lat_mid + 0.5*d_mult*d/Re*180.0/math.pi
         lat_dist = math.fabs(lat_max - lat_min)*111045.0
         
-        long_min = long_mid - 0.5*d_mult*d/r_at_lat*180.0/math.pi
-        long_max = long_mid + 0.5*d_mult*d/r_at_lat*180.0/math.pi
+        long_min = self.clip_long(long_mid - 0.5*d_mult*d/r_at_lat*180.0/math.pi)
+        long_max = self.clip_long(long_mid + 0.5*d_mult*d/r_at_lat*180.0/math.pi)
         long_dist = r_at_lat*math.radians(math.fabs(long_max-long_min))
 
         return (lat_dist, long_dist, lat_min, long_min, lat_max, long_max)
@@ -42,11 +62,14 @@ class ElevationData:
                 long_start, lat_end, long_end, d_mult)[2:]
         
         dlat = (lat_max - lat_min) / ny
-        dlong = (long_max - long_min) / nx
+        dlong = math.fabs(long_max - long_min)
+        if dlong > 180.0:
+            dlong = 360.0 - dlong
+        dlong /= nx
         
         lat_long_list = []
         for i in range(nx):
-            long = long_min + i*dlong
+            long = self.clip_long(long_min + i*dlong)
             for j in range(ny):
                 lat = lat_min + j*dlat
                 lat_long_list.append((lat,long))
@@ -146,7 +169,16 @@ class BingElevData(ElevationData):
 if __name__ == "__main__":
     # TODO
     bmd = BingElevData()
-    print(bmd.get_elevations(50, 50, 60, 60, 32, 32, 1.2))
+    lat_dist, long_dist, lat_min, long_min, lat_max, long_max = \
+        bmd.get_lat_long_dist(50, -175, 50, 175, 1.2)
+    print(long_min, long_max)
+    lat_dist, long_dist, lat_min, long_min, lat_max, long_max = \
+        bmd.get_lat_long_dist(50, -5, 50, 5, 1.2)
+    print(long_min, long_max)
+    lat_dist, long_dist, lat_min, long_min, lat_max, long_max = \
+        bmd.get_lat_long_dist(50, 155, 50, -85, 1.2)
+    print(long_min, long_max)
+    # print(bmd.get_elevations(50, 50, 60, 60, 32, 32, 1.2))
 
     '''
     otd = OpenTopoData()
