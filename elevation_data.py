@@ -52,7 +52,10 @@ class ElevationData:
         
         long_min = self.clip_long(long_mid - 0.5*d_mult*d/r_at_lat*180.0/math.pi)
         long_max = self.clip_long(long_mid + 0.5*d_mult*d/r_at_lat*180.0/math.pi)
-        long_dist = r_at_lat*math.radians(math.fabs(long_max-long_min))
+        dlong = math.fabs(long_max - long_min)
+        if dlong > 180.0:
+            dlong = 360.0 - dlong
+        long_dist = r_at_lat*math.radians(dlong)
 
         return (lat_dist, long_dist, lat_min, long_min, lat_max, long_max)
 
