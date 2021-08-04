@@ -59,11 +59,14 @@ function init(nx, ny, long_dist, lat_dist, elev, image_url) {
 
   geometry.computeFaceNormals(); // needed for helper
 
-  // TODO: scale and translate texture to line up with bbox
   // TODO: only set texture if URL is present
   texture = new THREE.TextureLoader().load(image_url)
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
+  
+  // scale and translate texture to line up with the edges of the map
+  // TODO
+  // texture.repeat.set(0.5, 0.5);
 
   mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture }));
   scene.add(mesh);
