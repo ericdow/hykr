@@ -13,16 +13,18 @@ let helper;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
+// TODO fix onPointerMove to use correct mouse position 
 // TODO add directional light
 
 // TODO set default values here
 const nx0 = 20, ny0 = 20;
 const elev0 = new Uint8Array(nx0*ny0);
 elev0.fill(100.0);
-init(nx0, ny0, 1000, 1000, elev0);
+init(nx0, ny0, 1000, 1000, elev0, 1.0, 1.0, 0.0, 0.0);
 animate();
 
-function init(nx, ny, long_dist, lat_dist, elev, image_url) {
+function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
+              tex_shift_x, tex_shift_y, image_url) {
   container = document.getElementById('terrain_container');
   container.innerHTML = '';
 
@@ -65,8 +67,8 @@ function init(nx, ny, long_dist, lat_dist, elev, image_url) {
   texture.wrapT = THREE.ClampToEdgeWrapping;
   
   // scale and translate texture to line up with the edges of the map
-  // TODO
-  // texture.repeat.set(0.5, 0.5);
+  texture.repeat.set(tex_scale_x, tex_scale_y);
+  texture.offset.set(tex_shift_x, tex_shift_y);
 
   mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture }));
   scene.add(mesh);
@@ -118,6 +120,7 @@ function onPointerMove(event) {
 // function to update terrain and texture data
 export function update(response) {
   init(response.nx, response.ny, response.long_dist, response.lat_dist, 
-      response.elev, response.image_url);
+      response.elev, response.tex_scale_x, response.tex_scale_y, 
+      response.tex_shift_x, response.tex_shift_y, response.image_url);
 }
 

@@ -18,26 +18,38 @@ def calculate_result():
     # get the elevation data
     nx = 100
     ny = 100
-    d_mult = 1.2
+    buff_mult = 1.2
     if elev_source == 'open_topo_data':
         elev_server = OpenTopoData()
     elif elev_source == 'epqs':
         elev_server = EPQSData()
     elif elev_source == 'bing_maps':
         elev_server = BingElevData()
-    elev = elev_server.get_elevations(lat_start, long_start, lat_end, long_end, 
-            nx, ny, d_mult)
-    lat_dist, long_dist, lat_min, long_min, lat_max, long_max = \
-            elev_server.get_lat_long_dist(lat_start, long_start, lat_end, 
-                    long_end, d_mult)
+    lat_min, long_min, lat_max, long_max = \
+            elev_server.get_square_bbox(lat_start, long_start, lat_end, 
+                    long_end, buff_mult)
+    lat_dist, long_dist = elev_server.get_lat_long_dist(lat_min, long_min, 
+            lat_max, long_max)
+    elev = elev_server.get_elevations(lat_min, long_min, lat_max, long_max,
+            nx, ny)
 
     # get the image data
     map_server = BingMapData()
     image_url, bbox, yres, xres = map_server.get_image_url(lat_min, long_min, 
             lat_max, long_max)
+    map_lat_dist, map_long_dist = elev_server.get_lat_long_dist(bbox[0], 
+            bbox[1], bbox[2], bbox[3])
+    tex_scale_x = long_dist / map_long_dist
+    tex_scale_y = lat_dist / map_lat_dist
+    lat_shift, long_shift = elev_server.get_lat_long_dist(bbox[0], bbox[1], 
+            lat_min, long_min)
+    tex_shift_x = lat_shift / map_lat_dist
+    tex_shift_y = long_shift / map_long_dist
 
     return jsonify({"elev":elev, "image_url":image_url, "nx":nx, "ny":ny, 
-        "lat_dist":lat_dist, "long_dist":long_dist})
+        "lat_dist":lat_dist, "long_dist":long_dist, "tex_scale_x":tex_scale_x,
+        "tex_scale_y":tex_scale_y, "tex_shift_x":tex_shift_x, 
+        "tex_shift_y":tex_shift_y})
 
 @app.route("/")
 def index():

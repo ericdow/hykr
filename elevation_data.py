@@ -5,6 +5,8 @@ import urllib.request, requests, json, time, math
 class ElevationData:
     '''Base class for elevation data objects, which are responsible for 
     retreiving elevation data'''
+    Re = 6.371e6 # Earth radius in meters
+    
     def __init__(self):
         self.base_url = None
 
@@ -12,8 +14,7 @@ class ElevationData:
         '''Check if the data server is healthy and return a bool'''
         raise NotImplementedError('You need to define is_healthy()!')
 
-    def get_elevations(self, lat_start, long_start, lat_end, long_end, nx, ny, 
-            d_mult):
+    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
         '''Get the elevation at a given latitudes and longitudes'''
         raise NotImplementedError('You need to define get_elevation()!')
 
@@ -27,13 +28,29 @@ class ElevationData:
         else:
             return long
 
-    def get_lat_long_dist(self, lat_start, long_start, lat_end, long_end, 
-            d_mult):
-        # form a bounding box of points to evaluate the elevations at
-        lat_mid = 0.5*(lat_start + lat_end)
+    def get_lat_long_dist(self, lat_start, long_start, lat_end, long_end):
         lat_dist = math.fabs(lat_end - lat_start)*111045.0
-        Re = 6.371e6 # Earth radius in meters
-        r_at_lat = math.cos(math.radians(math.fabs(lat_mid)))*Re # radius at lat_mid
+
+        # always use smallest longitude range
+        dlong = math.fabs(long_end - long_start)
+        if dlong > 180.0:
+            dlong = 360.0 - dlong
+        lat_mid = 0.5*(lat_start + lat_end)
+        r_at_lat = math.cos(math.radians(math.fabs(lat_mid)))*self.Re # radius at lat_mid
+        long_dist = r_at_lat*math.radians(dlong)
+
+        return (lat_dist, long_dist)
+    
+    def get_square_bbox(self, lat_start, long_start, lat_end, long_end, 
+            buff_mult):
+        '''Form a bounding box around start/end points with some buffer'''
+        lat_dist, long_dist = self.get_lat_long_dist(lat_start, long_start,
+                 lat_end, long_end)
+        d = math.sqrt(lat_dist**2 + long_dist**2)
+        
+        lat_mid = 0.5*(lat_start + lat_end)
+        lat_min = lat_mid - 0.5*buff_mult*d/self.Re*180.0/math.pi
+        lat_max = lat_mid + 0.5*buff_mult*d/self.Re*180.0/math.pi
 
         # always use smallest longitude range
         dlong = math.fabs(long_end - long_start)
@@ -42,28 +59,15 @@ class ElevationData:
         if dlong > 180.0:
             dlong = 360.0 - dlong
             long0, long1 = long1, long0            
-        long_dist = r_at_lat*math.radians(dlong)
         long_mid = self.clip_long(long0 + 0.5*dlong) 
         
-        d = math.sqrt(lat_dist**2 + long_dist**2)
-        lat_min = lat_mid - 0.5*d_mult*d/Re*180.0/math.pi
-        lat_max = lat_mid + 0.5*d_mult*d/Re*180.0/math.pi
-        lat_dist = math.fabs(lat_max - lat_min)*111045.0
-        
-        long_min = self.clip_long(long_mid - 0.5*d_mult*d/r_at_lat*180.0/math.pi)
-        long_max = self.clip_long(long_mid + 0.5*d_mult*d/r_at_lat*180.0/math.pi)
-        dlong = math.fabs(long_max - long_min)
-        if dlong > 180.0:
-            dlong = 360.0 - dlong
-        long_dist = r_at_lat*math.radians(dlong)
+        r_at_lat = math.cos(math.radians(math.fabs(lat_mid)))*self.Re # radius at lat_mid
+        long_min = self.clip_long(long_mid - 0.5*buff_mult*d/r_at_lat*180.0/math.pi)
+        long_max = self.clip_long(long_mid + 0.5*buff_mult*d/r_at_lat*180.0/math.pi)
 
-        return (lat_dist, long_dist, lat_min, long_min, lat_max, long_max)
+        return (lat_min, long_min, lat_max, long_max)
 
-    def get_lat_long_grid(self, lat_start, long_start, lat_end, long_end, nx, 
-            ny, d_mult):
-        lat_min, long_min, lat_max, long_max = self.get_lat_long_dist(lat_start, 
-                long_start, lat_end, long_end, d_mult)[2:]
-        
+    def get_lat_long_grid(self, lat_min, long_min, lat_max, long_max, nx, ny):
         dlat = (lat_max - lat_min) / ny
         dlong = math.fabs(long_max - long_min)
         if dlong > 180.0:
@@ -71,10 +75,10 @@ class ElevationData:
         dlong /= nx
         
         lat_long_list = []
-        for i in range(nx):
-            long = self.clip_long(long_min + i*dlong)
-            for j in range(ny):
-                lat = lat_min + j*dlat
+        for j in range(ny):
+            for i in range(nx):
+                long = self.clip_long(long_min + i*dlong)
+                lat = lat_max - j*dlat
                 lat_long_list.append((lat,long))
 
         return lat_long_list
@@ -89,10 +93,9 @@ class OpenTopoData(ElevationData):
         contents = json.loads(contents)
         return contents['status'] == 'OK'
     
-    def get_elevations(self, lat_start, long_start, lat_end, long_end, nx, ny, 
-            d_mult):
-        lat_long_list = self.get_lat_long_grid(lat_start, long_start, lat_end,
-                long_end, nx, ny, d_mult)
+    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
+        lat_long_list = self.get_lat_long_grid(lat_min, long_min, lat_max,
+                long_max, nx, ny)
         # public API: 1000 calls/day, 100 locations/call, 1 call/sec
         # build the request by joining the locations
         elevations = []
@@ -122,10 +125,9 @@ class EPQSData(ElevationData):
     def __init__(self):
         self.base_url = 'https://nationalmap.gov/epqs/'
 
-    def get_elevations(self, lat_start, long_start, lat_end, long_end, nx, ny, 
-            d_mult):
-        lat_long_list = self.get_lat_long_grid(lat_start, long_start, lat_end,
-                long_end, nx, ny, d_mult)
+    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
+        lat_long_list = self.get_lat_long_grid(lat_min, long_min, lat_max,
+                long_max, nx, ny)
         elevations = []
         for lat_long in lat_long_list:
             url = self.base_url + 'pqs.php?'
@@ -150,11 +152,9 @@ class BingElevData(ElevationData):
         with open('bing_maps_api_key', 'r') as file:
             self.api_key = file.read().strip()
 
-    def get_elevations(self, lat_start, long_start, lat_end, long_end, nx, ny, 
-            d_mult):
-        # build a list of points to query
-        lat_long_list = self.get_lat_long_grid(lat_start, long_start, lat_end,
-                long_end, nx, ny, d_mult)
+    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
+        lat_long_list = self.get_lat_long_grid(lat_min, long_min, lat_max,
+                long_max, nx, ny)
         body = 'points='
         for lat_long in lat_long_list:
             body += str(lat_long[0]) + ',' + str(lat_long[1]) + ','
