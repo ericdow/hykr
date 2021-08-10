@@ -29,6 +29,8 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   container.innerHTML = '';
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
@@ -37,6 +39,12 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   scene.background = new THREE.Color(0xffffff);
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 100, 200000);
+
+  // create a directional light and turn on shadows
+  const light = new THREE.DirectionalLight(0xffffff, 1, 100);
+  light.position.set(0, 1, 0);
+  light.castShadow = true;
+  scene.add(light);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.minDistance = Math.max(lat_dist, long_dist);
@@ -62,7 +70,7 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   geometry.computeFaceNormals(); // needed for helper
 
   // TODO: only set texture if URL is present
-  texture = new THREE.TextureLoader().load(image_url)
+  texture = new THREE.TextureLoader().load(image_url);
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   
@@ -71,6 +79,8 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   texture.offset.set(tex_shift_x, tex_shift_y);
 
   mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture }));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   scene.add(mesh);
 
   const geometryHelper = new THREE.ConeGeometry(20, 100, 3);

@@ -1,6 +1,7 @@
 import urllib.request, requests, json, time, math
 
 # TODO: handle latitude limits, e.g. -85 to +85 degrees
+# TODO: improve API key handling
 
 class ElevationData:
     '''Base class for elevation data objects, which are responsible for 
