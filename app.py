@@ -1,8 +1,11 @@
 from flask import Flask, request, render_template, jsonify, Response
 import os, sys
 import urllib.parse
+from dotenv import load_dotenv
 from elevation_data import *
 from map_data import *
+
+load_dotenv() # load variables stored in .env file 
 
 app = Flask(__name__)
 

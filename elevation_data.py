@@ -1,7 +1,6 @@
-import urllib.request, requests, json, time, math
+import urllib.request, requests, json, time, math, os
 
 # TODO: handle latitude limits, e.g. -85 to +85 degrees
-# TODO: improve API key handling
 
 class ElevationData:
     '''Base class for elevation data objects, which are responsible for 
@@ -10,6 +9,7 @@ class ElevationData:
     
     def __init__(self):
         self.base_url = None
+        self.api_key = ''
 
     def is_healthy(self):
         '''Check if the data server is healthy and return a bool'''
@@ -150,8 +150,7 @@ class BingElevData(ElevationData):
     '''Elevation data from Bing Maps'''
     def __init__(self):
         self.base_url = 'http://dev.virtualearth.net/REST/v1/Elevation/'
-        with open('bing_maps_api_key', 'r') as file:
-            self.api_key = file.read().strip()
+        self.api_key = os.getenv('BING_MAPS_API_KEY')
 
     def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
         lat_long_list = self.get_lat_long_grid(lat_min, long_min, lat_max,

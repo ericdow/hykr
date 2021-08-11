@@ -1,4 +1,4 @@
-import urllib.request, requests, json, base64
+import urllib.request, requests, json, os
 
 class MapData:
     '''Base class for map data objects, which are responsible for 
@@ -29,9 +29,7 @@ class BingMapData(MapData):
     '''Map data from Bing Maps'''
     def __init__(self):
         self.base_url = 'http://dev.virtualearth.net/REST/v1/Imagery/Map/'
-        # TODO read in API key from environment variables
-        with open('bing_maps_api_key', 'r') as file:
-            self.api_key = file.read().strip()
+        self.api_key = os.getenv('BING_MAPS_API_KEY')
 
     def get_satellite_image_url(self, lat_min, long_min, lat_max, long_max, 
             resolution):
@@ -77,8 +75,7 @@ class BingMapData(MapData):
 #     '''Map data from Bing Maps'''
 #     def __init__(self):
 #         self.base_url = 'https://api.mapbox.com/styles/v1/'
-#         with open('mapbox_api_key', 'r') as file:
-#             self.api_key = file.read().strip()
+#         self.api_key = os.getenv('MAPBOX_API_KEY')
 # 
 #     def get_satellite_image_url(self, lat_min, long_min, lat_max, long_max):
 #         # TODO
