@@ -1,4 +1,4 @@
-# hykr :sunrise_over_mountains: :snake:
+# hykr :mountain: :snake:
 
 Web-based path planning in python
 
