@@ -41,11 +41,11 @@ def calculate_result():
     # get the image data
     if map_source == 'bing_maps':
         map_server = BingMapData()
-    resolution = (0,0) # TODO
+    res = (1000,1000)
     sat_img_base_url = map_server.get_satellite_image_url(lat_min, long_min, 
-            lat_max, long_max, resolution)
+            lat_max, long_max, res)
     bbox, yres, xres = map_server.get_image_metadata(lat_min, 
-            long_min, lat_max, long_max, resolution)
+            long_min, lat_max, long_max, res)
     map_lat_dist, map_long_dist = elev_server.get_lat_long_dist(bbox[0], 
             bbox[1], bbox[2], bbox[3])
     tex_scale_x = long_dist / map_long_dist
@@ -86,5 +86,4 @@ def sat_img_proxy(map_source_and_url):
     return response
 
 if __name__ == "__main__":
-    # TODO: remove debug
     app.run("127.0.0.1", port=5000, debug=True)

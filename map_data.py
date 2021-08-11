@@ -1,4 +1,5 @@
 import urllib.request, requests, json, os
+from PIL import ImageColor
 
 class MapData:
     '''Base class for map data objects, which are responsible for 
@@ -12,14 +13,22 @@ class MapData:
         raise NotImplementedError('You need to define is_healthy()!')
     
     def get_satellite_image_url(self, lat_min, long_min, lat_max, long_max, 
-            resolution):
-        '''Get the url for the image of a specific area, without API key'''
+            res):
+        '''Get the url for the satellite image of an area, without API key'''
         raise NotImplementedError('You need to define get_satellite_image_url()!')
 
-    def get_image_metadata(self, lat_min, long_min, lat_max, long_max, 
-            resolution):
+    def get_image_metadata(self, lat_min, long_min, lat_max, long_max, res):
         '''Get the image metadata for a specific map request'''
         raise NotImplementedError('You need to define get_image_metadata()!')
+    
+    def get_water_image_url(self, lat_min, long_min, lat_max, long_max, 
+            res):
+        '''Get the url for the water image of an area, without API key'''
+        raise NotImplementedError('You need to define get_water_image_url()!')
+
+    def get_water_rgb(self):
+        '''Get the RGB tuple for the water color in a water image'''
+        raise NotImplementedError('You need to define get_water_rgb()!')
 
     def get_api_key(self):
         '''Get the API key for this map service'''
@@ -32,20 +41,20 @@ class BingMapData(MapData):
         self.api_key = os.getenv('BING_MAPS_API_KEY')
 
     def get_satellite_image_url(self, lat_min, long_min, lat_max, long_max, 
-            resolution):
+            res):
         # get the url for the specified area
         imagerySet = 'Aerial'
         url = self.base_url + imagerySet + '?ma=' + str(lat_min) + ',' + \
                 str(long_min) + ',' + str(lat_max) + ',' + str(long_max) + \
-                '&fmt=png&key='
+                '&ms=' + str(res[0]) + ',' + str(res[1]) + '&fmt=png&key='
         
         return url
     
     def get_image_metadata(self, lat_min, long_min, lat_max, long_max, 
-            resolution):
+            res):
         # get the image metadata
         url = self.get_satellite_image_url(lat_min, long_min, lat_max, long_max,
-                resolution) + self.get_api_key();
+                res) + self.get_api_key();
         url += '&mmd=1'
 
         contents = urllib.request.urlopen(url).read()
@@ -58,18 +67,23 @@ class BingMapData(MapData):
         return (bbox, imageHeight, imageWidth)
     
     def get_water_image_url(self, lat_min, long_min, lat_max, long_max, 
-            resolution):
+            res):
         # get the url for the specified area
         imagerySet = 'Road'
         url = self.base_url + imagerySet + '?ma=' + str(lat_min) + ',' + \
                 str(long_min) + ',' + str(lat_max) + ',' + str(long_max) + \
-                '&fmt=png'
+                '&ms=' + str(res[0]) + ',' + str(res[1]) + '&fmt=png'
 
         # add a style string to make the water blue and remove all labels
-        url += '&st=me|lv:0_ar|v:0_trs|v:0_ad|bv:0_wt|fc:0000ff_pt|v:0'
+        (r,g,b) = self.get_water_rgb()
+        url += '&st=me|lv:0_ar|v:0_trs|v:0_ad|bv:0_wt|fc:' + \
+                '{:02x}{:02x}{:02x}'.format(r, g, b) + '_pt|v:0'
         url += '&key='
 
         return url
+    
+    def get_water_rgb(self):
+        return (0,0,255)
 
 # class MapBoxData(MapData):
 #     '''Map data from Bing Maps'''
