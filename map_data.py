@@ -1,5 +1,4 @@
 import urllib.request, requests, json, os
-from PIL import ImageColor
 
 class MapData:
     '''Base class for map data objects, which are responsible for 
