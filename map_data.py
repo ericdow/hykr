@@ -60,8 +60,8 @@ class BingMapData(MapData):
         contents = json.loads(contents)
         
         bbox = contents['resourceSets'][0]['resources'][0]['bbox']
-        imageHeight = contents['resourceSets'][0]['resources'][0]['imageHeight']
-        imageWidth = contents['resourceSets'][0]['resources'][0]['imageWidth']
+        imageHeight = int(contents['resourceSets'][0]['resources'][0]['imageHeight'])
+        imageWidth = int(contents['resourceSets'][0]['resources'][0]['imageWidth'])
 
         return (bbox, imageHeight, imageWidth)
     

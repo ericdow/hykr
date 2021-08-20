@@ -64,7 +64,7 @@ def calculate_result():
     # TODO
     pathfinder = PathFinder()
     pathfinder.create_movement_grid(lat_min, long_min, lat_max, long_max, 
-            50, 50, map_server)
+            100, 100, map_server)
 
     return jsonify({"elev":elev, "image_url":sat_img_proxy_url, "nx":nx, "ny":ny, 
         "lat_dist":lat_dist, "long_dist":long_dist, "tex_scale_x":tex_scale_x,
