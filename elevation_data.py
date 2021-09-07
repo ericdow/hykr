@@ -15,7 +15,7 @@ class ElevationData:
         '''Check if the data server is healthy and return a bool'''
         raise NotImplementedError('You need to define is_healthy()!')
 
-    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
+    def get_elevations(self, lat_long_bbox, nx, ny):
         '''Get the elevation at a given latitudes and longitudes'''
         raise NotImplementedError('You need to define get_elevation()!')
 
@@ -68,7 +68,8 @@ class ElevationData:
 
         return (lat_min, long_min, lat_max, long_max)
 
-    def get_lat_long_grid(self, lat_min, long_min, lat_max, long_max, nx, ny):
+    def get_lat_long_grid(self, lat_long_bbox, nx, ny):
+        lat_min, long_min, lat_max, long_max = lat_long_bbox
         dlat = (lat_max - lat_min) / ny
         dlong = math.fabs(long_max - long_min)
         if dlong > 180.0:
@@ -94,9 +95,8 @@ class OpenTopoData(ElevationData):
         contents = json.loads(contents)
         return contents['status'] == 'OK'
     
-    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
-        lat_long_list = self.get_lat_long_grid(lat_min, long_min, lat_max,
-                long_max, nx, ny)
+    def get_elevations(self, lat_long_bbox, nx, ny):
+        lat_long_list = self.get_lat_long_grid(lat_long_bbox, nx, ny)
         # public API: 1000 calls/day, 100 locations/call, 1 call/sec
         # build the request by joining the locations
         elevations = []
@@ -126,9 +126,8 @@ class EPQSData(ElevationData):
     def __init__(self):
         self.base_url = 'https://nationalmap.gov/epqs/'
 
-    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
-        lat_long_list = self.get_lat_long_grid(lat_min, long_min, lat_max,
-                long_max, nx, ny)
+    def get_elevations(self, lat_long_bbox, nx, ny):
+        lat_long_list = self.get_lat_long_grid(lat_long_bbox, nx, ny)
         elevations = []
         for lat_long in lat_long_list:
             url = self.base_url + 'pqs.php?'
@@ -152,9 +151,8 @@ class BingElevData(ElevationData):
         self.base_url = 'http://dev.virtualearth.net/REST/v1/Elevation/'
         self.api_key = os.getenv('BING_MAPS_API_KEY')
 
-    def get_elevations(self, lat_min, long_min, lat_max, long_max, nx, ny):
-        lat_long_list = self.get_lat_long_grid(lat_min, long_min, lat_max,
-                long_max, nx, ny)
+    def get_elevations(self, lat_long_bbox, nx, ny):
+        lat_long_list = self.get_lat_long_grid(lat_long_bbox, nx, ny)
         body = 'points='
         for lat_long in lat_long_list:
             body += str(lat_long[0]) + ',' + str(lat_long[1]) + ','

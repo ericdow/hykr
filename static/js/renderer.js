@@ -1,6 +1,5 @@
-import * as THREE from 'https://unpkg.com/three/build/three.module.js';
-import { OrbitControls } from './OrbitControls.js';
-import { ImprovedNoise } from 'https://unpkg.com/three/examples/jsm/math/ImprovedNoise.js';
+import * as THREE from 'https://unpkg.com/three@0.125.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.125.0/examples/jsm/controls/OrbitControls.js';
       
 let container;
 
@@ -66,8 +65,6 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   for (let i = 0, j = 0, l = vertices.length; i < l; i ++, j += 3) {
     vertices[j + 1] = vertical_scale * elev[i];
   }
-
-  geometry.computeFaceNormals(); // needed for helper
 
   // TODO: only set texture if URL is present
   texture = new THREE.TextureLoader().load(image_url);

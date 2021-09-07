@@ -11,17 +11,15 @@ class MapData:
         '''Check if the data server is healthy and return a bool'''
         raise NotImplementedError('You need to define is_healthy()!')
     
-    def get_satellite_image_url(self, lat_min, long_min, lat_max, long_max, 
-            res):
+    def get_satellite_image_url(self, lat_long_bbox, res):
         '''Get the url for the satellite image of an area, without API key'''
         raise NotImplementedError('You need to define get_satellite_image_url()!')
 
-    def get_image_metadata(self, lat_min, long_min, lat_max, long_max, res):
+    def get_image_metadata(self, lat_long_bbox, res):
         '''Get the image metadata for a specific map request'''
         raise NotImplementedError('You need to define get_image_metadata()!')
     
-    def get_water_image_url(self, lat_min, long_min, lat_max, long_max, 
-            res):
+    def get_water_image_url(self, lat_long_bbox, res):
         '''Get the url for the water image of an area, without API key'''
         raise NotImplementedError('You need to define get_water_image_url()!')
 
@@ -39,9 +37,9 @@ class BingMapData(MapData):
         self.base_url = 'http://dev.virtualearth.net/REST/v1/Imagery/Map/'
         self.api_key = os.getenv('BING_MAPS_API_KEY')
 
-    def get_satellite_image_url(self, lat_min, long_min, lat_max, long_max, 
-            res):
+    def get_satellite_image_url(self, lat_long_bbox, res):
         # get the url for the specified area
+        lat_min, long_min, lat_max, long_max = lat_long_bbox
         imagerySet = 'Aerial'
         url = self.base_url + imagerySet + '?ma=' + str(lat_min) + ',' + \
                 str(long_min) + ',' + str(lat_max) + ',' + str(long_max) + \
@@ -49,11 +47,9 @@ class BingMapData(MapData):
         
         return url
     
-    def get_image_metadata(self, lat_min, long_min, lat_max, long_max, 
-            res):
+    def get_image_metadata(self, lat_long_bbox, res):
         # get the image metadata
-        url = self.get_satellite_image_url(lat_min, long_min, lat_max, long_max,
-                res) + self.get_api_key();
+        url = self.get_satellite_image_url(lat_long_bbox, res) + self.get_api_key()
         url += '&mmd=1'
 
         contents = urllib.request.urlopen(url).read()
@@ -65,9 +61,9 @@ class BingMapData(MapData):
 
         return (bbox, imageHeight, imageWidth)
     
-    def get_water_image_url(self, lat_min, long_min, lat_max, long_max, 
-            res):
+    def get_water_image_url(self, lat_long_bbox, res):
         # get the url for the specified area
+        lat_min, long_min, lat_max, long_max = lat_long_bbox
         imagerySet = 'Road'
         url = self.base_url + imagerySet + '?ma=' + str(lat_min) + ',' + \
                 str(long_min) + ',' + str(lat_max) + ',' + str(long_max) + \

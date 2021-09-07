@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, jsonify, Response
 import os, sys
 import urllib.parse
+import numpy as np
 from dotenv import load_dotenv
 from elevation_data import *
 from map_data import *
@@ -31,22 +32,19 @@ def calculate_result():
         elev_server = EPQSData()
     elif elev_source == 'bing_maps':
         elev_server = BingElevData()
-    lat_min, long_min, lat_max, long_max = \
-            elev_server.get_square_bbox(lat_start, long_start, lat_end, 
+    lat_long_bbox = elev_server.get_square_bbox(lat_start, long_start, lat_end, 
                     long_end, buff_mult)
+    lat_min, long_min, lat_max, long_max = lat_long_bbox
     lat_dist, long_dist = elev_server.get_lat_long_dist(lat_min, long_min, 
             lat_max, long_max)
-    elev = elev_server.get_elevations(lat_min, long_min, lat_max, long_max,
-            nx, ny)
+    elev = elev_server.get_elevations(lat_long_bbox, nx, ny)
 
     # get the image data
     if map_source == 'bing_maps':
         map_server = BingMapData()
     res = (1000,1000)
-    sat_img_base_url = map_server.get_satellite_image_url(lat_min, long_min, 
-            lat_max, long_max, res)
-    bbox, yres, xres = map_server.get_image_metadata(lat_min, 
-            long_min, lat_max, long_max, res)
+    sat_img_base_url = map_server.get_satellite_image_url(lat_long_bbox, res)
+    bbox, yres, xres = map_server.get_image_metadata(lat_long_bbox, res) 
     map_lat_dist, map_long_dist = elev_server.get_lat_long_dist(bbox[0], 
             bbox[1], bbox[2], bbox[3])
     tex_scale_x = long_dist / map_long_dist
@@ -62,9 +60,12 @@ def calculate_result():
 
     # find the optimal path
     # TODO
-    pathfinder = PathFinder()
-    pathfinder.create_movement_grid(lat_min, long_min, lat_max, long_max, 
-            100, 100, map_server)
+    pathfinder = Dijkstra()
+    elev2d = np.reshape(np.array(elev), (nx, ny))
+    ngx = 100
+    ngy = 100
+    result, path = pathfinder.get_optimal_path(lat_start, long_start, lat_end, long_end, 
+            lat_long_bbox, lat_dist, long_dist, ngx, ngy, elev2d, map_server)
 
     return jsonify({"elev":elev, "image_url":sat_img_proxy_url, "nx":nx, "ny":ny, 
         "lat_dist":lat_dist, "long_dist":long_dist, "tex_scale_x":tex_scale_x,
