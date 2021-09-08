@@ -12,7 +12,6 @@ let helper;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
-// TODO fix onPointerMove to use correct mouse position 
 // TODO add directional light
 
 // TODO set default values here
@@ -108,8 +107,8 @@ function render() {
 }
 
 function onPointerMove(event) {
-  pointer.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
-  pointer.y = - (event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+  pointer.x = ((event.clientX - renderer.domElement.offsetLeft) / renderer.domElement.clientWidth) * 2 - 1;
+  pointer.y = - ((event.clientY - renderer.domElement.offsetTop) / renderer.domElement.clientHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
 
   // See if the ray from the camera into the world hits one of our meshes
