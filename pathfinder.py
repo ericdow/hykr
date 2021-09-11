@@ -6,6 +6,7 @@ from scipy import interpolate
 from enum import Enum
 from map_data import *
 from priority_queue import *
+import time # TODO remove
 
 class PathFinderResult(Enum):
     '''Enum for result of pathfinding'''
@@ -118,9 +119,9 @@ class PathFinder:
         # interpolate elevations on movement grid
         nx_elev = elev.shape[0]
         ny_elev = elev.shape[1]
-        x,y = np.meshgrid(np.linspace(0,1,nx_elev), np.linspace(0,1,ny_elev))
-        interp = interpolate.interp2d(x, y, elev)
-        # TODO this throws a warning...
+        x = np.linspace(0,1,nx_elev)
+        y = np.linspace(0,1,ny_elev)
+        interp = interpolate.RectBivariateSpline(x, y, elev)
         elev_interp = interp(np.linspace(0,1,nx), np.linspace(0,1,ny))
 
         # set height in water grid points to infinity
@@ -159,6 +160,20 @@ class PathFinder:
 
         return neighbor_times
 
+    def check_start_end_validity(self, lat_start, long_start, lat_end, long_end, 
+            lat_long_bbox, is_land):
+        '''Check if start and end points are valid, i.e. not in water'''
+        lat_min, long_min, lat_max, long_max = lat_long_bbox
+        si = int(round((long_start-long_min) / (long_max-long_min)))
+        sj = int(round((lat_start-lat_min) / (lat_max-lat_min)))
+        ei = int(round((long_end-long_min) / (long_max-long_min)))
+        ej = int(round((lat_end-lat_min) / (lat_max-lat_min)))
+
+        if not is_land[si,sj]:
+            return PathFinderResult.INVALID_START
+        if not is_land[ei,ej]:
+            return PathFinderResult.INVALID_END
+
 class Dijkstra(PathFinder):
     
     def get_optimal_path(self, lat_start, long_start, lat_end, long_end, 
@@ -168,7 +183,15 @@ class Dijkstra(PathFinder):
         is_land = self.get_land_grid(lat_long_bbox, nx, ny, map_server)
         neighbor_times = self.compute_neighbor_times(is_land, elev2d, 
                 lat_dist, long_dist)
+       
+        # check if start/end points are valid
+        valid = self.check_start_end_validity(lat_start, long_start, lat_end, 
+            long_end, lat_long_bbox, is_land)
+        if (valid == PathFinderResult.INVALID_START or 
+                valid == PathFinderResult.INVALID_END):
+            return valid, []
         
+        # TODO remove...
         neighbor_times[neighbor_times == np.inf] = 0.0
         foo = neighbor_times[:,:,0]
         foo = 255.0*np.divide(foo, np.max(foo))
@@ -178,18 +201,23 @@ class Dijkstra(PathFinder):
         c[:,:,2] = foo
         c = c.astype('uint8')
         Image.fromarray(c).save("dt.png")
-        
-        # check if start/end points are valid
-        lat_min, long_min, lat_max, long_max = lat_long_bbox
-        si = int(round((long_start-long_min) / (long_max-long_min)))
-        sj = int(round((lat_start-lat_min) / (lat_max-lat_min)))
-        ei = int(round((long_end-long_min) / (long_max-long_min)))
-        ej = int(round((lat_end-lat_min) / (lat_max-lat_min)))
 
-        if not is_land[si,sj]:
-            return PathFinderResult.INVALID_START, []
-        if not is_land[ei,ej]:
-            return PathFinderResult.INVALID_END, []
+class BidirectionalDijkstra(PathFinder):
+    
+    def get_optimal_path(self, lat_start, long_start, lat_end, long_end, 
+            lat_long_bbox, lat_dist, long_dist, nx, ny, elev2d, 
+            map_server : MapData):
+        # find the valid grid points and compute the time between neighbors
+        is_land = self.get_land_grid(lat_long_bbox, nx, ny, map_server)
+        neighbor_times = self.compute_neighbor_times(is_land, elev2d, 
+                lat_dist, long_dist)
+       
+        # check if start/end points are valid
+        valid = self.check_start_end_validity(lat_start, long_start, lat_end, 
+            long_end, lat_long_bbox, is_land)
+        if (valid == PathFinderResult.INVALID_START or 
+                valid == PathFinderResult.INVALID_END):
+            return valid, []
         
         '''Perform Dijkstra from start and end points
         Choose direction with fewer frontier nodes for expansion'''
@@ -199,11 +227,12 @@ class Dijkstra(PathFinder):
         # initialize the parents, keys, etc. in both forward and reverse directions
         parents = np.empty((nx,ny,2), dtype=object) # initialized to None
         queue_keys = np.empty((nx,ny,2), dtype=object) # initialized to None
+        finalized = np.zeros((nx,ny,2), dtype=bool) # initialized to False
 
         # insert the start and end points into the priority queues
-        queue_keys[si,sj,0] = NodeTimePair((si,sj), 0.0)
+        queue_keys[si,sj,0] = NodeTimePair(np.array([si,sj]), 0.0)
         fwd_frontier.insert(queue_keys[si,sj,0])
-        queue_keys[ei,ej,1] = NodeTimePair((ei,ej), 0.0)
+        queue_keys[ei,ej,1] = NodeTimePair(np.array([ei,ej]), 0.0)
         rev_frontier.insert(queue_keys[ei,ej,1])
 
         '''
@@ -235,6 +264,10 @@ class Dijkstra(PathFinder):
                     pq.decrease_key(next_node.queue_key)
                     next_node.parent = node
         
+      FFinalized:
+      FReachable: fwd_frontier
+      FCost = min_times[0]
+
       node(G) fnext = FReachable.getMinKey();
       FReachable.remove(fnext);
       fnext.FFinalized = true;
@@ -263,8 +296,10 @@ class Dijkstra(PathFinder):
         '''
 
         terminate = False
-        min_times = [0,0]
+        min_times = [np.inf,np.inf]
         min_total_time = np.inf
+        # ordering is (N, NE, E, SE, S, SW, W, NW)
+        delta_ij = np.array([[0,1], [1,1], [1,0], [1,-1], [0,-1], [-1,0], [-1,1]])
         while (not terminate) and len(fwd_frontier) > 0 and len(rev_frontier) > 0:
             # choose search direction 
             if len(fwd_frontier) < len(rev_frontier):
@@ -287,6 +322,13 @@ class Dijkstra(PathFinder):
                 # skip nodes that aren't reachable
                 if np.isinf(neighbor_times[node[0], node[1], n]):
                     continue
+
+                # skip nodes that have been finalized
+                # TODO
+
+                i,j = node[0],node[1]
+                neigh_ij = node + delta_ij[n] 
+                neigh_time = neighbor_times[i,j,n]
 
 
 
