@@ -70,7 +70,6 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
     vertices[j + 1] = vertical_scale * elev[i];
   }
 
-  // TODO: only set texture if URL is present
   texture = new THREE.TextureLoader().load(image_url);
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -86,13 +85,16 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
 
   // draw the optimal path
   let points = [];
-  const nxp = 100; // TODO pass in
-  const nyp = 100; // TODO pass in
-  for (let i = 0; i < path.length/2; i++) {
-    points.push(new THREE.Vector3((path[2*i]/nxp - 0.5) * long_dist, 1000.0, (path[2*i+1]/nyp - 0.5) * lat_dist));
+  for (let n = 0; n < path.length/2; n++) {
+    let i = path[2*n];
+    let j = path[2*n+1];
+    points.push(new THREE.Vector3(((i+0.5)/nx-0.5) * long_dist,
+      1.1*vertical_scale*elev[nx*j + i],
+      ((j+0.5)/ny-0.5) * lat_dist));
   }
-  const tube_curve = new THREE.CatmullRomCurve3(points); 
-  const tube_geometry = new THREE.TubeGeometry(tube_curve, 100, 20, 20, false);
+  const tube_curve = new THREE.CatmullRomCurve3(points);
+  const tube_thick = Math.sqrt(lat_dist*lat_dist + long_dist*long_dist)/300.0;
+  const tube_geometry = new THREE.TubeGeometry(tube_curve, nx+ny, tube_thick, 10, false);
   const material = new THREE.MeshBasicMaterial({color: 0xff0000});
   const tube_mesh = new THREE.Mesh(tube_geometry, material);
   scene.add(tube_mesh);

@@ -62,10 +62,8 @@ def calculate_result():
     # TODO
     pathfinder = Dijkstra()
     elev2d = np.reshape(np.array(elev), (nx, ny))
-    ngx = 100
-    ngy = 100
     result, path = pathfinder.get_optimal_path(lat_start, long_start, lat_end, long_end, 
-            lat_long_bbox, lat_dist, long_dist, ngx, ngy, elev2d, map_server)
+            lat_long_bbox, lat_dist, long_dist, nx, ny, elev2d, map_server)
 
     return jsonify({"elev":elev, "image_url":sat_img_proxy_url, "nx":nx, "ny":ny, 
         "lat_dist":lat_dist, "long_dist":long_dist, "tex_scale_x":tex_scale_x,
