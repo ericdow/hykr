@@ -67,10 +67,11 @@ def calculate_result():
     result, path = pathfinder.get_optimal_path(lat_start, long_start, lat_end, long_end, 
             lat_long_bbox, lat_dist, long_dist, ngx, ngy, elev2d, map_server)
 
+    print(result)
     return jsonify({"elev":elev, "image_url":sat_img_proxy_url, "nx":nx, "ny":ny, 
         "lat_dist":lat_dist, "long_dist":long_dist, "tex_scale_x":tex_scale_x,
         "tex_scale_y":tex_scale_y, "tex_shift_x":tex_shift_x, 
-        "tex_shift_y":tex_shift_y})
+        "tex_shift_y":tex_shift_y, "result":result, "path":path})
 
 @app.route("/")
 def index():

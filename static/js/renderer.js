@@ -22,7 +22,7 @@ init(nx0, ny0, 1000, 1000, elev0, 1.0, 1.0, 0.0, 0.0);
 animate();
 
 function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
-              tex_shift_x, tex_shift_y, image_url) {
+              tex_shift_x, tex_shift_y, image_url, path) {
   container = document.getElementById('terrain_container');
   container.innerHTML = '';
 
@@ -79,6 +79,26 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   mesh.receiveShadow = true;
   scene.add(mesh);
 
+  // add the optimal path
+  class CustomSinCurve extends THREE.Curve {
+  	constructor( scale = 1 ) {
+  		super();
+  		this.scale = scale;
+  	}
+  
+  	getPoint( t, optionalTarget = new THREE.Vector3() ) {
+  		const tx = t * 3 - 1.5;
+  		const ty = Math.sin( 2 * Math.PI * t );
+  		const tz = 0;
+  		return optionalTarget.set( tx, ty, tz ).multiplyScalar( this.scale );
+  	}
+  }
+  const tube_path = new CustomSinCurve(1000);
+  const tube_geometry = new THREE.TubeGeometry(tube_path, 20, 10, 20, false);
+  const material = new THREE.MeshBasicMaterial({color: 0xff0000});
+  const tube_mesh = new THREE.Mesh(tube_geometry, material);
+  scene.add(tube_mesh);
+
   const geometryHelper = new THREE.ConeGeometry(20, 100, 3);
   geometryHelper.translate(0, 50, 0);
   geometryHelper.rotateX(Math.PI / 2);
@@ -125,8 +145,18 @@ function onPointerMove(event) {
 
 // function to update terrain and texture data
 export function update(response) {
+  if (response.result == 2) {
+    alert("Invalid Starting Location");
+  }
+  else if (response.result == 3) {
+    alert("Invalid Ending Location");
+  }
+  else if (response.result == 4) {
+    alert("No Valid Path Between Start and End");
+  }
   init(response.nx, response.ny, response.long_dist, response.lat_dist, 
-      response.elev, response.tex_scale_x, response.tex_scale_y, 
-      response.tex_shift_x, response.tex_shift_y, response.image_url);
+    response.elev, response.tex_scale_x, response.tex_scale_y, 
+    response.tex_shift_x, response.tex_shift_y, response.image_url, 
+    response.path);
 }
 

@@ -3,12 +3,11 @@ from io import BytesIO
 import math, requests
 import numpy as np
 from scipy import interpolate
-from enum import Enum
+from enum import IntEnum
 from map_data import *
 from priority_queue import *
-import time # TODO remove
 
-class PathFinderResult(Enum):
+class PathFinderResult(IntEnum):
     '''Enum for result of pathfinding'''
     OK = 1
     INVALID_START = 2
@@ -86,7 +85,8 @@ class PathFinder:
         img_rgb = np.array(img)
         water_rgb = map_server.get_water_rgb()
         rgb_tol = 25000 # average difference of ~90 in each channel
-        land_pixels = np.sum((img_rgb - water_rgb)**2, axis=2) < rgb_tol
+        land_pixels = np.sum((img_rgb - water_rgb)**2, axis=2) > rgb_tol
+        land_pixels = np.transpose(land_pixels)
 
         # determine which graph nodes are covered by water
         lat_min, long_min, lat_max, long_max = lat_long_bbox
@@ -134,29 +134,29 @@ class PathFinder:
         dy = lat_dist / ny
         dxy = math.sqrt(dx**2 + dy**2)
         # N
-        neighbor_times[:-1,:,0] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i,j+1], dy) for i in range(0,nx)] for j in range(0,ny-1)])
+        neighbor_times[:,:-1,0] = np.array([[self.walking_time(elev_interp[i,j], 
+            elev_interp[i,j+1], dy) for j in range(0,ny-1)] for i in range(0,nx)])
         # NE
         neighbor_times[:-1,:-1,1] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i+1,j+1], dy) for i in range(0,nx-1)] for j in range(0,ny-1)])
+            elev_interp[i+1,j+1], dxy) for j in range(0,ny-1)] for i in range(0,nx-1)])
         # E
-        neighbor_times[:,:-1,2] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i+1,j], dy) for i in range(0,nx-1)] for j in range(0,ny)])
+        neighbor_times[:-1,:,2] = np.array([[self.walking_time(elev_interp[i,j], 
+            elev_interp[i+1,j], dx) for j in range(0,ny)] for i in range(0,nx-1)])
         # SE
         neighbor_times[:-1,1:,3] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i+1,j-1], dy) for i in range(0,nx-1)] for j in range(1,ny)])
+            elev_interp[i+1,j-1], dxy) for j in range(1,ny)] for i in range(0,nx-1)])
         # S
-        neighbor_times[1:,:,4] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i,j-1], dy) for i in range(0,nx)] for j in range(1,ny)])
+        neighbor_times[:,1:,4] = np.array([[self.walking_time(elev_interp[i,j], 
+            elev_interp[i,j-1], dy) for j in range(1,ny)] for i in range(0,nx)])
         # SW
         neighbor_times[1:,1:,5] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i-1,j-1], dy) for i in range(1,nx)] for j in range(1,ny)])
+            elev_interp[i-1,j-1], dxy) for j in range(1,ny)] for i in range(1,nx)])
         # W
-        neighbor_times[:,1:,6] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i-1,j], dy) for i in range(1,nx)] for j in range(0,ny)])
+        neighbor_times[1:,:,6] = np.array([[self.walking_time(elev_interp[i,j], 
+            elev_interp[i-1,j], dx) for j in range(0,ny)] for i in range(1,nx)])
         # NW
-        neighbor_times[:-1,1:,7] = np.array([[self.walking_time(elev_interp[i,j], 
-            elev_interp[i-1,j+1], dy) for i in range(1,nx)] for j in range(0,ny-1)])
+        neighbor_times[1:,:-1,7] = np.array([[self.walking_time(elev_interp[i,j], 
+            elev_interp[i-1,j+1], dxy) for j in range(0,ny-1)] for i in range(1,nx)])
 
         return neighbor_times
 
@@ -164,15 +164,19 @@ class PathFinder:
             lat_long_bbox, is_land):
         '''Check if start and end points are valid, i.e. not in water'''
         lat_min, long_min, lat_max, long_max = lat_long_bbox
-        si = int(round((long_start-long_min) / (long_max-long_min)))
-        sj = int(round((lat_start-lat_min) / (lat_max-lat_min)))
-        ei = int(round((long_end-long_min) / (long_max-long_min)))
-        ej = int(round((lat_end-lat_min) / (lat_max-lat_min)))
+        nx = is_land.shape[0]
+        ny = is_land.shape[1]
+        si = int(round(nx * (long_start-long_min) / (long_max-long_min)))
+        sj = ny - int(round(ny * (lat_start-lat_min) / (lat_max-lat_min))) - 1
+        ei = int(round(nx * (long_end-long_min) / (long_max-long_min)))
+        ej = ny - int(round(ny * (lat_end-lat_min) / (lat_max-lat_min))) - 1
 
         if not is_land[si,sj]:
-            return PathFinderResult.INVALID_START
+            return si, sj, ei, ej, PathFinderResult.INVALID_START
         if not is_land[ei,ej]:
-            return PathFinderResult.INVALID_END
+            return si, sj, ei, ej, PathFinderResult.INVALID_END
+        else:
+            return si, sj, ei, ej, PathFinderResult.OK
 
 class Dijkstra(PathFinder):
     
@@ -185,22 +189,65 @@ class Dijkstra(PathFinder):
                 lat_dist, long_dist)
        
         # check if start/end points are valid
-        valid = self.check_start_end_validity(lat_start, long_start, lat_end, 
-            long_end, lat_long_bbox, is_land)
+        si, sj, ei, ej, valid = self.check_start_end_validity(lat_start, 
+                long_start, lat_end, long_end, lat_long_bbox, is_land)
         if (valid == PathFinderResult.INVALID_START or 
                 valid == PathFinderResult.INVALID_END):
             return valid, []
+
+        # initialize the parents, keys, etc.
+        pq = PriorityQueue()
+        parents = np.empty((nx,ny), dtype=object) # initialized to None
+        queue_keys = np.empty((nx,ny), dtype=object) # initialized to None
+
+        # insert the start point into the priority queue
+        queue_keys[si,sj] = NodeTimePair(np.array([si,sj]), 0.0)
+        pq.insert(queue_keys[si,sj])
+
+        delta_ij = np.array([[0,1], [1,1], [1,0], [1,-1], [0,-1], [-1,-1], [-1,0], [-1,1]])
+        num_visited = 0
+        found_end = False
+        while len(pq) > 0:
+            node_key = pq.extract_min()
+            node, time = node_key.node, node_key.time
+            i,j = node[0],node[1]
+            num_visited = num_visited + 1
+           
+            # stop searching if you find the ending node 
+            if (i,j) == (ei,ej):
+                found_end = True
+                break
+            
+            # relax nodes adjacent to this node
+            for n in range(8):
+                # skip nodes that aren't reachable
+                if np.isinf(neighbor_times[i,j,n]):
+                    continue
+                neigh_ij = node + delta_ij[n]
+                ni,nj = neigh_ij[0],neigh_ij[1]
+                neigh_time = neighbor_times[i,j,n] + time
+                if queue_keys[ni, nj] is None:
+                    queue_keys[ni,nj] = NodeTimePair(np.array([ni,nj]), 
+                        neigh_time)
+                    pq.insert(queue_keys[ni,nj])
+                    parents[ni,nj] = np.array([i,j])
+                elif neigh_time < queue_keys[ni,nj].time:
+                    queue_keys[ni,nj].time = neigh_time
+                    pq.decrease_key(queue_keys[ni,nj])
+                    parents[ni,nj] = np.array([i,j])
         
-        # TODO remove...
-        neighbor_times[neighbor_times == np.inf] = 0.0
-        foo = neighbor_times[:,:,0]
-        foo = 255.0*np.divide(foo, np.max(foo))
-        c = np.zeros((nx,ny,3))
-        c[:,:,0] = foo
-        c[:,:,1] = foo
-        c[:,:,2] = foo
-        c = c.astype('uint8')
-        Image.fromarray(c).save("dt.png")
+        # check if we reached the end node
+        if not found_end:
+            return PathFinderResult.NO_VALID_PATH, []
+
+        # follow the parent pointers back to build the path
+        path = [(ei,ej)]
+        i,j = ei,ej
+        while (i,j) != (si,sj):
+            parent = parents[i,j]
+            i,j = parent[0], parent[1]
+            path.append((i,j))
+        return PathFinderResult.OK, path.reverse()
 
 class BidirectionalDijkstra(PathFinder):
     
@@ -244,8 +291,8 @@ class BidirectionalDijkstra(PathFinder):
     
         # Run Dijkstra's algorithm.
         pq = PriorityQueue()
-        # Use NodeDistancePair as a key in the priority queue.
-        source.queue_key = NodeDistancePair(source, 0)
+        # Use NodeTimePair as a key in the priority queue.
+        source.queue_key = NodeTimePair(source, 0)
         pq.insert(source.queue_key)
         
         while len(pq) > 0:
@@ -256,7 +303,7 @@ class BidirectionalDijkstra(PathFinder):
             for next_node in node.adj: # Relax nodes adjacent to node.
                 next_dist = weight(node, next_node) + dist
                 if next_node.queue_key is None:
-                    next_node.queue_key = NodeDistancePair(next_node, next_dist)
+                    next_node.queue_key = NodeTimePair(next_node, next_dist)
                     pq.insert(next_node.queue_key)
                     next_node.parent = node
                 elif next_dist < next_node.queue_key.distance:
@@ -299,7 +346,7 @@ class BidirectionalDijkstra(PathFinder):
         min_times = [np.inf,np.inf]
         min_total_time = np.inf
         # ordering is (N, NE, E, SE, S, SW, W, NW)
-        delta_ij = np.array([[0,1], [1,1], [1,0], [1,-1], [0,-1], [-1,0], [-1,1]])
+        delta_ij = np.array([[0,1], [1,1], [1,0], [1,-1], [0,-1], [-1,-1], [-1,0], [-1,1]])
         while (not terminate) and len(fwd_frontier) > 0 and len(rev_frontier) > 0:
             # choose search direction 
             if len(fwd_frontier) < len(rev_frontier):
