@@ -37,6 +37,11 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   scene.background = new THREE.Color(0xffffff);
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 100, 200000);
+ 
+  // skip drawing if user hasn't run pathfinder 
+  if (typeof image_url == 'undefined') {
+    return;
+  }
 
   // create a directional light and turn on shadows
   const light = new THREE.DirectionalLight(0xffffff, 1, 100);
@@ -79,22 +84,15 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   mesh.receiveShadow = true;
   scene.add(mesh);
 
-  // add the optimal path
-  class CustomSinCurve extends THREE.Curve {
-  	constructor( scale = 1 ) {
-  		super();
-  		this.scale = scale;
-  	}
-  
-  	getPoint( t, optionalTarget = new THREE.Vector3() ) {
-  		const tx = t * 3 - 1.5;
-  		const ty = Math.sin( 2 * Math.PI * t );
-  		const tz = 0;
-  		return optionalTarget.set( tx, ty, tz ).multiplyScalar( this.scale );
-  	}
+  // draw the optimal path
+  let points = [];
+  const nxp = 100; // TODO pass in
+  const nyp = 100; // TODO pass in
+  for (let i = 0; i < path.length/2; i++) {
+    points.push(new THREE.Vector3((path[2*i]/nxp - 0.5) * long_dist, 1000.0, (path[2*i+1]/nyp - 0.5) * lat_dist));
   }
-  const tube_path = new CustomSinCurve(1000);
-  const tube_geometry = new THREE.TubeGeometry(tube_path, 20, 10, 20, false);
+  const tube_curve = new THREE.CatmullRomCurve3(points); 
+  const tube_geometry = new THREE.TubeGeometry(tube_curve, 100, 20, 20, false);
   const material = new THREE.MeshBasicMaterial({color: 0xff0000});
   const tube_mesh = new THREE.Mesh(tube_geometry, material);
   scene.add(tube_mesh);

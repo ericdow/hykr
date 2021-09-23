@@ -241,13 +241,15 @@ class Dijkstra(PathFinder):
             return PathFinderResult.NO_VALID_PATH, []
 
         # follow the parent pointers back to build the path
-        path = [(ei,ej)]
+        path = [int(ej),int(ei)]
         i,j = ei,ej
         while (i,j) != (si,sj):
             parent = parents[i,j]
             i,j = parent[0], parent[1]
-            path.append((i,j))
-        return PathFinderResult.OK, path.reverse()
+            path.append(int(j))
+            path.append(int(i))
+        path.reverse()
+        return PathFinderResult.OK, path
 
 class BidirectionalDijkstra(PathFinder):
     
