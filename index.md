@@ -1,37 +1,35 @@
-## Welcome to GitHub Pages
+# hykr
 
-You can use the [editor on GitHub](https://github.com/ericdow/hykr/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+The goal of this project was to implement a web-based pathfinding tool that uses Python in the back end. I chose to use the [Flask](https://flask.palletsprojects.com/) framework due to its simplicity.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+The site is hosted on heroku [here](https://hykr-app.herokuapp.com/).
 
-### Markdown
+## Problem Statement
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+We seek to find the fastest route between a starting point and ending point, given by their latitudes and longitudes. A number of different factors control how quickly our hiker can travel between two points. We first assume that the steepness of the terrain impacts the speed of our hiker. We also assume that the hiker never learned to swim, so they can't travel across bodies of water.
 
-```markdown
-Syntax highlighted code block
+Once the hiker's starting and ending points have been chosen, we form a bounding box around the midpoint of the start and end points. The bounding box is divided into a grid of tiles.
 
-# Header 1
-## Header 2
-### Header 3
+### Computing Travel Times
 
-- Bulleted
-- List
+TODO
 
-1. Numbered
-2. List
+## Pathfinding Algorithms
 
-**Bold** and _Italic_ and `Code` text
+There are a number of different methods that can be used to compute the optimal path between 
 
-[Link](url) and ![Image](src)
-```
+### Dijkstra
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+TODO
 
-### Jekyll Themes
+## Data Sources
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/ericdow/hykr/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+TODO
 
-### Support or Contact
+### Hiding API Keys
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+TODO
+
+## Visualizing Results
+
+TODO
