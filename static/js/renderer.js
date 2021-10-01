@@ -12,8 +12,6 @@ let helper;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
-// TODO add directional light
-
 // TODO set default values here
 const nx0 = 20, ny0 = 20;
 const elev0 = new Uint8Array(nx0*ny0);
@@ -43,12 +41,6 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
     return;
   }
 
-  // create a directional light and turn on shadows
-  const light = new THREE.DirectionalLight(0xffffff, 1, 100);
-  light.position.set(0, 1, 0);
-  light.castShadow = true;
-  scene.add(light);
-
   controls = new OrbitControls(camera, renderer.domElement);
   controls.minDistance = Math.max(lat_dist, long_dist);
   controls.maxDistance = 10.0 * controls.minDistance;
@@ -69,6 +61,7 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   for (let i = 0, j = 0, l = vertices.length; i < l; i ++, j += 3) {
     vertices[j + 1] = vertical_scale * elev[i];
   }
+  geometry.computeVertexNormals();
 
   texture = new THREE.TextureLoader().load(image_url);
   texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -78,7 +71,7 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   texture.repeat.set(tex_scale_x, tex_scale_y);
   texture.offset.set(tex_shift_x, tex_shift_y);
 
-  mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture }));
+  mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ map: texture }));
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
@@ -95,10 +88,25 @@ function init(nx, ny, long_dist, lat_dist, elev, tex_scale_x, tex_scale_y,
   const tube_curve = new THREE.CatmullRomCurve3(points);
   const tube_thick = Math.sqrt(lat_dist*lat_dist + long_dist*long_dist)/300.0;
   const tube_geometry = new THREE.TubeGeometry(tube_curve, nx+ny, tube_thick, 10, false);
-  const material = new THREE.MeshBasicMaterial({color: 0xff0000});
+  const material = new THREE.MeshPhongMaterial({color: 0xff0000});
   const tube_mesh = new THREE.Mesh(tube_geometry, material);
   scene.add(tube_mesh);
 
+  // create a directional light and turn on shadows
+  const light = new THREE.DirectionalLight(0xffffff, 1.0, 100);
+  light.position.set(1.0, 1.0, 0);
+  light.castShadow = true;
+  scene.add(light);
+
+  // TODO: fix shadow parameters
+	light.shadow.mapSize.width = 2048;
+	light.shadow.mapSize.height = 2048;
+	light.shadow.camera.near = 200;
+	light.shadow.camera.far = 1500;
+	light.shadow.camera.fov = 40;
+	light.shadow.bias = - 0.005;
+
+  // TODO: remove geometryHelper
   const geometryHelper = new THREE.ConeGeometry(20, 100, 3);
   geometryHelper.translate(0, 50, 0);
   geometryHelper.rotateX(Math.PI / 2);
